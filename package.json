@@ -1,0 +1,16 @@
+{
+  "name": "backend-dev",
+  "version": "1.0.0",
+  "description": "developing backend project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "javascript",
+    "Backend",
+    "dev"
+  ],
+  "author": "Piyush Gupta",
+  "license": "ISC"
+}
