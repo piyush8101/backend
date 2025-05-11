@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"name": "Backend dev",
+			"path": "."
+		},
+		{
+			"name": "React_Environment",
+			"path": "../../React_Environment"
+		},
+		{
+			"path": "../Backend"
+		}
+	],
+	"settings": {}
+}

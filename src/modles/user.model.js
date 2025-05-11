@@ -44,11 +44,10 @@ const userSchema = new Schema(
       type: String,
     },
   },
-  {
+  { 
     timestamps: true,
   }
 );
-
 
 
 export const User = mongoose.model("User", userSchema);

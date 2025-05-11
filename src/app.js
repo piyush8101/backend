@@ -5,7 +5,6 @@ import cookieParser from 'cookie-parser';
 const app = express()
 
 //app.use(cors())   //simple way to use corse
-
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
     credentials : true
@@ -32,4 +31,13 @@ app.use(express.static("public"));
 // Parses cookies from incoming requests and makes them accessible via req.cookies
 app.use(cookieParser());
 
+
+
+//import routes
+import userRouter  from './routes/user.routes.js';
+
+//routes declaration
+app.use("/api/v1/users" ,userRouter)         //app.use("/users" ,userRouter)   writing api version better approach
+
+// http://localhost:8000/api/v1/users/register
 export {app}
