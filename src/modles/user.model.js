@@ -1,4 +1,6 @@
 import mongoose, {Schema} from "mongoose";
+import bcrypt from 'bcrypt'
+import jsonwebtoken from 'jsonwebtoken'
 
 const userSchema = new Schema(
   {
@@ -17,7 +19,7 @@ const userSchema = new Schema(
       lowercase: true,
       trim: true,
     },
-    fullname: {
+    fullName: {
       type: String,
       required: true,
       trim: true,
@@ -32,7 +34,7 @@ const userSchema = new Schema(
     watchHistory: [
       {
         //array of watch videos taking id of video
-        type: Schema.Types.ObjctId,
+        type: Schema.Types.ObjectId,
         ref: "Video",
       },
     ],
@@ -48,6 +50,47 @@ const userSchema = new Schema(
     timestamps: true,
   }
 );
+
+//before saving in db we will encrypt password
+userSchema.pre("save" , async function (next) {       //using pre and used for it takes two parameter event and callback
+    if(!this.isModified("password")) 
+       return next()   //checking only if changing or saving password otherwise dont
+
+        this.password = await bcrypt.hash(this.password , 10)  //10 is salt of rounds
+        next();
+})   
+
+//checking the encrypted passsword and user password(string) matching or not. So we created a custom hook
+userSchema.methods.isPasswordCorrect = async function (password) {    
+    return await bcrypt.compare(password, this.password)        //comparing encrypted and string of password
+}
+
+userSchema.methods.generateAccessToken = async function(){
+  return jwt.sign(
+      {
+         _id : this.id,
+         email : this.email,
+         username : this.username,
+         fullname : this.fullName
+      },
+      process.env.ACCESS_TOKEN_SECRET,
+      {
+         expiresIn : process.env.ACCESS_TOKEN_EXPIRY
+      }
+   )
+}
+
+userSchema.methods.generaterefreshToken = async function (){
+   return jwt.sign(
+      {
+         _id : this.id
+      },
+      process.env.REFRESH_TOKEN_SECRET,
+      {
+         expiresIn : process.env.REFRESH_TOKEN_EXPIRY
+      }
+   )
+}
 
 
 export const User = mongoose.model("User", userSchema);
