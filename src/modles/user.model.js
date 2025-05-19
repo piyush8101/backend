@@ -60,6 +60,9 @@ userSchema.pre("save" , async function (next) {       //using pre and used for i
         next();
 })   
 
+
+//we design the custom methods like userSchema.methods.methodName = function(){}
+
 //checking the encrypted passsword and user password(string) matching or not. So we created a custom hook
 userSchema.methods.isPasswordCorrect = async function (password) {    
     return await bcrypt.compare(password, this.password)        //comparing encrypted and string of password
@@ -68,6 +71,7 @@ userSchema.methods.isPasswordCorrect = async function (password) {
 userSchema.methods.generateAccessToken = async function(){
   return jwt.sign(
       {
+       // Payload: includes _id, email, username, fullname — info the backend can use to verify the user.
          _id : this.id,
          email : this.email,
          username : this.username,
