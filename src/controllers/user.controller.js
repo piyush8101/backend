@@ -3,7 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../modles/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { use } from "react";
+import jwt from "jsonwebtoken"
 
 
 //create a methode for access and refresh tokens because it will be used at many places
@@ -11,8 +11,8 @@ import { use } from "react";
 const generateAccessAndRefreshTokens = async (userId) =>{
   try {
       const user = await User.findById(userId)
-      const accessToken = user.generateAccessToken()
-      const refreshToken = user.generateRefreshToken()
+      const accessToken = await user.generateAccessToken()
+      const refreshToken = await user.generateRefreshToken()
 
      user.refreshToken =  refreshToken    //storing new refresh token in the user documents
      await user.save({validateBeforeSave : false})  //remove validation of the schema like password etc while saving new refresh token
@@ -148,7 +148,7 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(404, "user does not exists")
   }
     
- const isPasswordValid = user.isPasswordCorrect(password)  //checking for password is correct or not taking isPasswordCorrect method from user.model.js 
+ const isPasswordValid = await user.isPasswordCorrect(password)  //checking for password is correct or not taking isPasswordCorrect method from user.model.js 
 
  if(!isPasswordValid){
   throw new ApiError(401, "Invalid user Credentials")  
@@ -165,8 +165,8 @@ const loginUser = asyncHandler(async (req, res) => {
 
   return res
   .status(200)
-  .cookie("accessToken" , accessToken, httpOnly)
-  .cookie("refreshToken", refreshToken, httpOnly)
+  .cookie("accessToken" , accessToken, options)
+  .cookie("refreshToken", refreshToken, options)
   .json(
     new ApiResponse(200,
       {
@@ -174,9 +174,8 @@ const loginUser = asyncHandler(async (req, res) => {
       },
       "User loggedIn successfully"
     )
-  )
-
-})
+  ) 
+  })
 
 
 // This logout handler does three key things:
@@ -207,9 +206,61 @@ const logoutUser =  asyncHandler(async(req, res) => {
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
-    .json(200, {}, "User logged Out")
+    .json({
+      success: true,
+      message: "User logged out"
+    });
 })
+
+const refreshAccessToken = asyncHandler(async(res,res) => {
+        
+  const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
+
+  if(!refreshAccessToken){
+    throw new ApiError(401, "Unauthorizes Request")
+  }
+
+  //two fields are required to verify 1st is token, 2nd is secreOfToken
+ try {
+   const decodedToken = jwt.verify(
+     incomingRefreshToken,
+     process.env.RERESH_TOKEN_SECRET
+   )
  
-export { registerUser , loginUser, logoutUser};
+   const user = await User.findById(decodedToken?._id)
+ 
+   if(!user){
+     throw new ApiError(401, "Invalid refresh token")
+   }
+    
+   //checking the user's refresh token is matching with DB user's refresh token or not for renewal of access token
+   if(incomingRefreshToken !== user?.refreshToken){
+     throw new ApiError(401, "refresh token is expired or used")
+   }
+ 
+   const options={
+    httpOnly : true,
+    secure :  true
+   }
+ 
+   //destructure for giving new accessToken to the user 
+  const {accessToken, newRefreshToken} = await generateAccessAndRefreshTokens(user._id) 
+   return res
+   .status(200)
+   .cookie("accessToken", accessToken ,options)
+   .cookie("refreshToken", newRefreshToken, options)
+   .json(
+     200,
+     { accessToken, refreshToken : newRefreshToken},
+       "access token refreshed successfully"
+   )
+ 
+ } catch (error) {
+    throw new ApiError(401, error?.message || "Invalid refresh token")
+ }
+})
+
+ 
+export { registerUser , loginUser, logoutUser, refreshAccessToken};
 
 //controllers and routes can be import in index.js but we want to clean index.js , so we will import in app.js
