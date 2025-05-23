@@ -30,7 +30,7 @@ export const verifyJWT = asyncHandler(async(req, res, next) => {
         if (!user) {
             throw new ApiError(401, "Invalid Access Token")
         }
-         req.user = user
+         req.user = user    //✅ req.user = user makes the authenticated user’s info available to the rest of the app during that request — like a temporary, safe identity card.
            next()
     } catch (error) {
         console.error("JWT verification error:", error);

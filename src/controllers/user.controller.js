@@ -260,7 +260,134 @@ const refreshAccessToken = asyncHandler(async(res,res) => {
  }
 })
 
- 
-export { registerUser , loginUser, logoutUser, refreshAccessToken};
+const changeUserPassword = asyncHandler(async(req, res) => {
+  const {oldPassword, newPassword} = req.body     //this line ectract the oldPassword and newPassword from the body or http header etc
+
+  const user =  await User.findById(req.user?._id)   //user is changing the password only if user already exists so use findById method
+
+ const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+
+ if(!isPasswordCorrect){
+  throw new ApiError(400, "Invalid old Password")
+ }
+
+ //if oldPassword is correct then set newPassword
+
+  user.password = newPassword
+  await user.save({validateBeforeSave :  false})
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(200, {} , "Password changed successfully")
+  )
+
+})
+
+const getCurrentUser = asyncHandler(async(req, res) => {
+  return res
+  .status(200)
+  .json(200, req.user, "current user fetched successfully")   //in auth middleware we inject the whole user in req.user
+}) 
+
+const updateAccountDetails =  asyncHandler(async(req, res) => {
+  const{fullName, email} = req.body           //const{} = req.body   req.body se jo field lena hoga wo { isme le lenge}
+
+  //best practices- if user want to change any file then write the separate controller code , so the user text data do not need to update only  file gets updated
+   if(!fullName || !email){
+    throw new ApiError(400, "All fields are required")
+   }
+
+   const user = await User.findByIdAndUpdate(  //User.findByIdAndUpdate(...) Mongoose method to find a document by its _id and update it in one step.
+    req.user?._id,   //this is the user logged in
+    {
+      $set: {     //$set is a MongoDB operator used to update specific fields in a document.
+        fullName,
+        email
+      }
+    },
+    {
+      new: true      // return the updated document instead of the old one
+    }
+  ).select("-password")  //we dont wnat to return password
+
+  return res
+  .status(200)
+  .json(new ApiResponse(200, user,  "Account details updated successfully"))
+
+})
+
+const updateUserAvatar =  asyncHandler(async(req, res) => {
+   const avatarLocalPath =  req.file?.path     //taking path from req.file  we required only one file avatar so we are using file instead of files
+
+   if (!avatarLocalPath) {
+    throw new ApiError(400, "Avatar file is missing")
+   }
+
+  const avatar = await uploadOnCloudinary(avatarLocalPath)   //upload new avatar on cloudinary
+
+  if(!avatar.url){
+    throw new ApiError(400, "Error while uploading on Avatar")
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user?._id, 
+    {
+      $set : {
+        avatar: avatar.url       //updating avatar file in DB
+      }
+    },
+      {
+        new : true             //returns new file
+      }
+  ).select("-password")
+
+  return res
+  .status(200)
+  .json(new ApiResponse(200, user, "Avatar updated successfully"))
+})
+
+const updateCoverImage =  asyncHandler(async(req, res) => {
+  const coverImageLocalPath = req.file.path
+
+  if (!coverImageLocalPath) {
+    throw new ApiError(400, "cover Image file is missing")
+  }
+  
+  const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+  
+  if (!coverImage.url) {
+    throw new ApiError(400, "Error while uploadig coverImage on Cloudinary")
+  }
+   
+  const user = await User.findByIdAndUpdate(
+    req.file?._id,
+    {
+      $set : {
+        coverImage : coverImage.url
+      }
+    },
+    {
+      new : true
+    }
+  ).select("-password")
+
+  return res
+  .status(200)
+  .json(new ApiResponse(200, user, "coverImage updated successfully"))
+
+})
+
+
+export {
+   registerUser ,
+   loginUser, logoutUser,
+   refreshAccessToken, 
+   changeUserPassword , 
+   getCurrentUser,
+   updateAccountDetails,
+   updateUserAvatar,
+   updateCoverImage
+  }
 
 //controllers and routes can be import in index.js but we want to clean index.js , so we will import in app.js
